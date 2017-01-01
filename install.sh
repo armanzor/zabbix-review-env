@@ -7,12 +7,12 @@ SERVERNAME=$2	# Hostname of Zabbix server
 rpm -ivh http://repo.zabbix.com/zabbix/2.0/rhel/6/x86_64/zabbix-release-2.0-1.el6.noarch.rpm
 
 # Install needed software for Zabbix agent
-yum -y -q install man zabbix zabbix-agent
-makewhatis
+yum -y -q install zabbix zabbix-agent
 
 # Setup correct local time (Moscow default)
 rm /etc/localtime
 ln -s /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+date -R
 
 # Apply correct settings to the Zabbix agent
 chkconfig zabbix-agent on
@@ -22,11 +22,13 @@ service zabbix-agent start
 # Switch SE Linux to the permissive mode
 setenforce Permissive
 sed -i -e 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
+sestatus
 
 # Modify IPtables settings for monitored hosts
 iptables -I INPUT 5 -p tcp -m state --state NEW -m tcp --dport 10050 -j ACCEPT
 service iptables save
 service iptables reload
+service iptables status
 
 # Using Zabbix API to add and modify hosts
 # jq - Command-line JSON processor - needed for parcing of reply from Zabbix server
@@ -50,6 +52,7 @@ mkdir /home/vagrant/bin
 cd /home/vagrant/bin
 curl -L https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 -o ./jq-linux64
 chmod +x ./jq-linux64
+cd
 
 if [ "${HOSTNAME}" == "${SERVERNAME}" ]; then
 	# Install needed software for Zabbix server
@@ -104,6 +107,7 @@ if [ "${HOSTNAME}" == "${SERVERNAME}" ]; then
 	iptables -I INPUT 6 -p tcp -m state --state NEW -m tcp --dport 10051 -j ACCEPT
 	service iptables save
 	service iptables reload
+	service iptables status
 
 	# Making initial setup for Zabbix server
 	service httpd start
